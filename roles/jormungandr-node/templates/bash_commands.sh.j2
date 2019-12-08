@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+
+function start() {
+    /usr/bin/flock -n {{ jormungandr_node_dir_base }}/node.lockfile \
+    nohup {{ jormungandr_node_dir_home }}/.cargo/bin/jormungandr \
+    --config {{ jormungandr_node_dir_base }}/node-config.yaml \
+    --genesis-block-hash {{ jormungandr_node_genesis_block_hash }} >> {{ jormungandr_node_dir_logs }}/node.out 2>&1 &
+    echo $(ps | grep jormungandr)
+}
+
+function stop() {
+    {{ jormungandr_node_dir_home }}/.cargo/bin/jcli rest v0 shutdown get -h http://127.0.0.1:{{ jormungandr_node_rest_port }}/api
+}
+
+function stats() {
+    {{ jormungandr_node_dir_home }}/.cargo/bin/jcli rest v0 node stats get -h http://127.0.0.1:{{ jormungandr_node_rest_port }}/api
+}
+
+function balance() {
+    {{ jormungandr_node_dir_home }}/.cargo/bin/jcli rest v0 account get $(cat {{ jormungandr_node_dir_base }}/receiver_account.txt) -h http://127.0.0.1:{{ jormungandr_node_rest_port }}/api
+}
+
+function faucet_beta() {
+    curl -X POST https://faucet.beta.jormungandr-testnet.iohkdev.io/send-money/$(cat {{ jormungandr_node_dir_base }}/receiver_account.txt)
+}
+
+function faucet_nightly() {
+    curl -X POST https://faucet.nightly.jormungandr-testnet.iohkdev.io/send-money/$(cat {{ jormungandr_node_dir_base }}/receiver_account.txt)
+}
+
+function get_ip() {
+    echo "{{ jormungandr_node_public_ip }}"
+}
+
+function get_pid() {
+    ps auxf | grep jormungandr
+}
+
+function memory() {
+    top -o %MEM
+}
+
+function get_public_ip() {
+    wget http://ipecho.net/plain -O - -q ; echo
+}
+
+function nodes() {
+    nodes="$(netstat -tupan | grep jor | grep EST | cut -c 1-80)"
+    total="$(netstat -tupan | grep jor | grep EST | cut -c 1-80 | wc -l)"
+    printf "%s\n" "${nodes}" "----------" "Total:" "${total}"
+}
+
+function num_open_files() {
+    echo "Calculating number of open files..."
+    echo "$(lsof -u $(whoami) | wc -l)"
+}
+
+function is_pool_visible() {
+    {{ jormungandr_node_dir_home }}/.cargo/bin/jcli rest v0 stake-pools get --host "http://127.0.0.1:{{ jormungandr_node_rest_port }}/api" | grep $(cat {{ jormungandr_node_dir_certificates }}/stake.id)
+}
+
+function create_stake_pool() {
+    {{ jormungandr_node_dir_scripts }}/createStakepool.sh {{ jormungandr_node_rest_port }} 25000 10/100 10000000 $(cat {{ jormungandr_node_dir_base }}/receiver_secret.key)
+}
+
+function delegate() {
+    {{ jormungandr_node_dir_scripts }}/delegate-account.sh $(cat {{ jormungandr_node_dir_certificates }}/stake.id) {{ jormungandr_node_rest_port }} $(cat {{ jormungandr_node_dir_base }}/receiver_secret.key)
+}
+
+function start_leader() {
+    nohup jormungandr --config node-config.yaml --secret node_secret.yaml --genesis-block-hash {{ jormungandr_node_genesis_block_hash }} >> logs/node.out 2>&1 &
+    echo "$(ps | grep jormungandr)"
+}
+
+function leader_logs() {
+    echo "Has this node been scheduled to be leader?"
+    echo "$({{ jormungandr_node_dir_home }}/.cargo/bin/jcli rest v0 leaders logs get -h http://127.0.0.1:{{ jormungandr_node_rest_port }}/api)"
+}

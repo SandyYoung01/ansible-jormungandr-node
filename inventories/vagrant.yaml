@@ -1,0 +1,11 @@
+---
+vagrant:
+  children:
+    nodes:
+      hosts:
+        jormungandr-node-1:
+          ansible_host: 192.168.50.10
+          jormungandr_public_id: d04664c993be1ffe00321d9cf4513b368b839137cde510f9 # created with `openssl rand -hex 24`
+        jormungandr-node-2:
+          ansible_host: 192.168.50.11
+          jormungandr_public_id: 41f8225cd9e7227afe1ea0c83fd82ca82b8175cef8938b05 # created with `openssl rand -hex 24`

@@ -1,0 +1,8 @@
+root=postmaster
+#rewriteDomain={{ common_ssmtp_rewrite_domain }}
+hostname={{ ansible_nodename }}
+FromLineOverride=NO
+mailhub={{ common_ssmtp_mailhub }}
+AuthUser={{ common_ssmtp_auth_user }}
+AuthPass={{ common_ssmtp_auth_pass }}
+UseSTARTTLS={{ common_ssmtp_tls }}

@@ -1,0 +1,7 @@
+---
+
+- name: Change timezone to "{{ common_timezone }}"
+  timezone:
+    name: "{{ common_timezone }}"
+  notify:
+    - restart-cron

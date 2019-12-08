@@ -1,0 +1,247 @@
+---
+
+- name: "Installing required packages"
+  apt: pkg={{ item }} state=present
+  with_items:
+    - curl
+    - git
+    - build-essential
+    - libssl-dev
+    - pkg-config
+    - screen
+    - screenie
+
+- name: "Ensure '{{ jormungandr_node_group }}' group exists"
+  group:
+    name: "{{ jormungandr_node_group }}"
+    state: present
+
+- name: "Create {{ jormungandr_node_user }} user"
+  user:
+    name:   "{{ jormungandr_node_user }}"
+    group:  "{{ jormungandr_node_group }}"
+    shell:  /bin/bash
+    home:   "{{ jormungandr_node_dir_home }}"
+
+- name: "Increase open file limit for {{ jormungandr_node_user }} user"
+  action: lineinfile dest="/etc/security/limits.conf" line="{{ jormungandr_node_user }} soft nofile 8192"
+  become: yes
+
+- name: Create directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ jormungandr_node_user }}"
+    group: "{{ jormungandr_node_group }}"
+    mode: 0700
+  with_items:
+    - "{{ jormungandr_node_dir_home }}/.bash_completion.d"
+    - "{{ jormungandr_node_dir_storage }}"
+    - "{{ jormungandr_node_dir_certificates }}"
+    - "{{ jormungandr_node_dir_logs }}"
+    - "{{ jormungandr_node_dir_scripts }}"
+    - "{{ jormungandr_node_dir_tmp }}"
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+
+- name: Create files
+  file:
+    path: "{{ item }}"
+    state: touch
+    owner: "{{ jormungandr_node_user }}"
+    group: "{{ jormungandr_node_group }}"
+    mode: 0600
+  with_items:
+    - "{{ jormungandr_node_dir_logs }}/node.out"
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+
+- name: Create node id file
+  copy:
+    content: "{{ hostvars[inventory_hostname].jormungandr_public_id }}"
+    dest: "{{ jormungandr_node_dir_base }}/node_id.txt"
+    mode: 0600
+  register: VAR_NODE_ID_FILE
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+
+- name: Create genesis block hash file
+  copy:
+    content: "{{ jormungandr_node_genesis_block_hash }}"
+    dest: "{{ jormungandr_node_dir_base }}/genesis_block_hash.txt"
+    mode: 0600
+  register: VAR_GENESIS_BLOCK_HASH_FILE
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+
+- name: Download rustup
+  shell: "curl https://sh.rustup.rs -sSf | sh -s -- -y"
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+
+- name: Add rustup path
+  action: lineinfile dest="{{ jormungandr_node_dir_home }}/.bashrc" line="PATH=$PATH:{{ jormungandr_node_dir_home }}/.cargo/bin" state=present
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+
+- name: Install stable rustup
+  shell: "{{ jormungandr_node_dir_home }}/.cargo/bin/rustup install stable"
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+
+- name: Set stable default rustup
+  shell: "{{ jormungandr_node_dir_home }}/.cargo/bin/rustup default stable"
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+
+- name: "Clone jormungandr repo ({{ jormungandr_node_version }})"
+  git:
+    repo: 'https://github.com/input-output-hk/jormungandr'
+    recursive: yes
+    clone: yes
+    update: yes
+    version: "{{ jormungandr_node_version }}"
+    dest: "{{ jormungandr_node_dir_repo }}"
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+  register: VAR_TASK_GIT_CLONE
+
+- name: "Delete contents of {{ jormungandr_node_dir_storage }} if necessary"
+  file:
+    state: absent
+    path: "{{ jormungandr_node_dir_storage }}/"
+  when: VAR_GENESIS_BLOCK_HASH_FILE.changed
+
+- name: Compile jormungandr (may take a while)
+  shell: "{{ jormungandr_node_dir_home }}/.cargo/bin/cargo install --path jormungandr --force"
+  args:
+    chdir: "{{ jormungandr_node_dir_repo }}"
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+  when: VAR_TASK_GIT_CLONE.changed
+
+- name: Compile jormungandr JCLI (may take a while)
+  shell: "{{ jormungandr_node_dir_home }}/.cargo/bin/cargo install --path jcli --force"
+  args:
+    chdir: "{{ jormungandr_node_dir_repo }}"
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+  when: VAR_TASK_GIT_CLONE.changed
+
+- name: Install jcli auto-completion
+  shell: "{{ jormungandr_node_dir_home }}/.cargo/bin/jcli auto-completion bash {{ jormungandr_node_dir_home }}/.bash_completion.d"
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+
+- name: Add auto completion
+  action: lineinfile dest="{{ jormungandr_node_dir_home }}/.bashrc" line="source {{ jormungandr_node_dir_home }}/.bash_completion.d/jcli.bash" state=present
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+
+- name: Install configuration
+  template:
+    src: node-config.yaml.j2
+    dest: "{{ jormungandr_node_dir_base }}/node-config.yaml"
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+
+- name: Opening ports
+  ufw:
+    rule: "{{ item.rule }}"
+    from_ip: "{{ item.from_ip | default('any') }}"
+    to_ip: "{{ item.to_ip | default('any') }}"
+    from_port: "{{ item.from_port | default('') }}"
+    to_port: "{{ item.to_port | default('') }}"
+    protocol: "{{ item.protocol | default('any') }}"
+    route: "{{ item.route | default(omit) }}"
+    log: "{{ item.log | default(false) }}"
+    comment: "{{ item.comment | default(omit) }}"
+  with_items:
+    - { rule: allow, to_port: "{{ jormungandr_node_rest_port }}", protocol: tcp, comment: 'Jormungandr Rest Port' }
+    - { rule: allow, to_port: "{{ jormungandr_node_public_port}}", protocol: tcp, comment: 'Jormungandr Public Listen Port' }
+  notify: ufw-reload
+
+- name: "Read receiver_secret.key file"
+  stat:
+    path: "{{ jormungandr_node_dir_base }}/receiver_secret.key"
+  register: VAR_RECEIVER_SECRET_FILE_STAT
+
+- name: Generate receiver secret
+  shell:  "{{ jormungandr_node_dir_home }}/.cargo/bin/jcli key generate --type=Ed25519Extended > {{ jormungandr_node_dir_base }}/receiver_secret.key"
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+  when: VAR_RECEIVER_SECRET_FILE_STAT.stat.exists == false
+
+- name: Generate receiver public key
+  shell: "cat {{ jormungandr_node_dir_base }}/receiver_secret.key | {{ jormungandr_node_dir_home }}/.cargo/bin/jcli key to-public > {{ jormungandr_node_dir_base }}/receiver_public.key"
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+  when: VAR_RECEIVER_SECRET_FILE_STAT.stat.exists == false
+
+- name: Generate receiver account
+  shell: "{{ jormungandr_node_dir_home }}/.cargo/bin/jcli address account --testing $(cat {{ jormungandr_node_dir_base }}/receiver_public.key) | tee {{ jormungandr_node_dir_base }}/receiver_account.txt"
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+  when: VAR_RECEIVER_SECRET_FILE_STAT.stat.exists == false
+
+- name: Install bash commands script
+  template:
+    src: bash_commands.sh.j2
+    dest: "{{ jormungandr_node_dir_scripts }}/bash-commands.sh"
+    mode: 0700
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+
+- name: Install autoload of bash commands
+  action: lineinfile dest="{{ jormungandr_node_dir_home }}/.bashrc" line="source {{ jormungandr_node_dir_scripts }}/bash-commands.sh" state=present
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+
+- name: Install "createStakepool.sh" script
+  template:
+    src: createStakepool.sh.j2
+    dest: "{{ jormungandr_node_dir_scripts }}/createStakepool.sh"
+    mode: 0700
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+
+- name: Install "send-certificate.sh" script
+  template:
+    src: send-certificate.sh.j2
+    dest: "{{ jormungandr_node_dir_scripts }}/send-certificate.sh"
+    mode: 0700
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+
+- name: Install "delegate-account.sh" script
+  template:
+    src: delegate-account.sh.j2
+    dest: "{{ jormungandr_node_dir_scripts }}/delegate-account.sh"
+    mode: 0700
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+
+- name: Install "send-lovelaces.sh" script
+  template:
+    src: send-lovelaces.sh.j2
+    dest: "{{ jormungandr_node_dir_scripts }}/send-lovelaces.sh"
+    mode: 0700
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+
+- name: Change permission of sensitive files
+  file:
+    path: "{{ item }}"
+    state: file
+    mode: 0600
+  with_items:
+    - "{{ jormungandr_node_dir_base }}/receiver_secret.key"
+    - "{{ jormungandr_node_dir_base }}/receiver_public.key"
+    - "{{ jormungandr_node_dir_base }}/receiver_account.txt"
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+
+- name: Start Node
+  shell: "/usr/bin/flock -n {{ jormungandr_node_dir_base }}/node.lockfile nohup {{ jormungandr_node_dir_home }}/.cargo/bin/jormungandr --config {{ jormungandr_node_dir_base }}/node-config.yaml --genesis-block-hash {{ jormungandr_node_genesis_block_hash }} >> {{ jormungandr_node_dir_logs }}/node.out 2>&1 &"
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"

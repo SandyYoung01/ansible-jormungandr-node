@@ -1,0 +1,25 @@
+---
+
+- name: "Installing common packages"
+  apt: pkg={{ item }} state=present
+  with_items:
+    - vim
+    - wget
+    - htop
+    - iftop
+    - iotop
+    - nload
+    - ssmtp
+    - pigz
+    - apt-show-versions
+    - wget
+    - curl
+    - ufw
+    - screen
+    - screenie
+    - mosh
+    - fail2ban
+    - ntp
+    - dnsutils
+    - gnupg2
+    - rng-tools

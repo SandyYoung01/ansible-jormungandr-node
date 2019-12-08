@@ -1,0 +1,11 @@
+---
+
+- hosts: all
+  become: true
+  roles:
+    - common
+
+- hosts: nodes
+  become: true
+  roles:
+    - jormungandr-node

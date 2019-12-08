@@ -1,0 +1,4 @@
+---
+
+- name: Set up ssmtp.conf
+  template: src=ssmtp.conf.j2 dest=/etc/ssmtp/ssmtp.conf

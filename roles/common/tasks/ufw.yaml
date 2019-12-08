@@ -1,0 +1,37 @@
+---
+
+- name: "UFW: Configure default policy (incoming)"
+  ufw:
+    policy: "deny"
+    direction: incoming
+  notify: ufw-reload
+
+- name: "UFW: Configure default policy (outgoing)"
+  ufw:
+    policy: "allow"
+    direction: outgoing
+  notify: ufw-reload
+
+- name: Opening ports
+  ufw:
+    rule: "{{ item.rule }}"
+    from_ip: "{{ item.from_ip | default('any') }}"
+    to_ip: "{{ item.to_ip | default('any') }}"
+    from_port: "{{ item.from_port | default('') }}"
+    to_port: "{{ item.to_port | default('') }}"
+    protocol: "{{ item.protocol | default('any') }}"
+    route: "{{ item.route | default(omit) }}"
+    log: "{{ item.log | default(false) }}"
+    comment: "{{ item.comment | default(omit) }}"
+  with_items:
+    - { rule: allow, to_port: 22, protocol: tcp, comment: 'SSH' }
+  notify: ufw-reload
+
+- name: "UFW: Enable logging"
+  ufw:
+    logging: "on"
+  notify: ufw-reload
+
+- name: "UFW: Enable Firewall"
+  ufw:
+    state: enabled

@@ -1,0 +1,12 @@
+---
+
+common_timezone:              UTC
+
+common_swap_file:             /swapfile
+common_swap_size:             5000 # in megabytes
+
+common_ssmtp_mailhub:         SMTP_MAILHUB
+common_ssmtp_auth_user:       SMTP_USER
+common_ssmtp_auth_pass:       SMTP_PASSWORD
+common_ssmtp_tls:             YES
+common_ssmtp_rewrite_domain:  ~
