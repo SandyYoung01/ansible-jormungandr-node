@@ -8,8 +8,17 @@ function start() {
     echo $(ps | grep jormungandr)
 }
 
+function start_leader() {
+    /usr/bin/flock -n {{ jormungandr_node_dir_base }}/node.lockfile \
+    nohup {{ jormungandr_node_dir_home }}/.cargo/bin/jormungandr \
+    --config {{ jormungandr_node_dir_base }}/node-config.yaml \
+    --secret {{ jormungandr_node_dir_base }}/node-secret.yaml \
+    --genesis-block-hash {{ jormungandr_node_genesis_block_hash }} >> {{ jormungandr_node_dir_logs }}/node.out 2>&1 &
+    echo $(ps | grep jormungandr)
+}
+
 function stop() {
-    {{ jormungandr_node_dir_home }}/.cargo/bin/jcli rest v0 shutdown get -h http://127.0.0.1:{{ hostvars[inventory_hostname].jormungandr_node_rest_port | default(jormungandr_node_rest_port) }}/api
+    ({{ jormungandr_node_dir_home }}/.cargo/bin/jcli rest v0 shutdown get -h http://127.0.0.1:{{ hostvars[inventory_hostname].jormungandr_node_rest_port | default(jormungandr_node_rest_port) }}/api
 }
 
 function stats() {
@@ -65,11 +74,6 @@ function create_stake_pool() {
 
 function delegate() {
     {{ jormungandr_node_dir_scripts }}/delegate-account.sh $(cat {{ jormungandr_node_dir_certificates }}/stake.id) {{ hostvars[inventory_hostname].jormungandr_node_rest_port | default(jormungandr_node_rest_port) }} $(cat {{ jormungandr_node_dir_base }}/receiver_secret.key)
-}
-
-function start_leader() {
-    nohup jormungandr --config node-config.yaml --secret node_secret.yaml --genesis-block-hash {{ jormungandr_node_genesis_block_hash }} >> logs/node.out 2>&1 &
-    echo "$(ps | grep jormungandr)"
 }
 
 function leader_logs() {
