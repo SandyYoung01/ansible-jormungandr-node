@@ -6,6 +6,7 @@ jormungandr_node_group:                 jormungandr
 jormungandr_node_dir_home:              /home/jormungandr
 jormungandr_node_dir_base:              /home/jormungandr/node
 jormungandr_node_dir_repo:              /home/jormungandr/node/jormungandr-repo
+jormungandr_node_dir_config:            /home/jormungandr/node/config
 jormungandr_node_dir_storage:           /home/jormungandr/node/storage
 jormungandr_node_dir_certificates:      /home/jormungandr/node/certificates
 jormungandr_node_dir_logs:              /home/jormungandr/node/logs
@@ -14,7 +15,5 @@ jormungandr_node_dir_tmp:               /home/jormungandr/node/tmp
 
 jormungandr_node_version:               v0.8.0-rc9+1                                                     # see https://github.com/input-output-hk/jormungandr/releases
 jormungandr_node_rest_port:             3100
-jormungandr_node_public_ip:             ~                                                                # Define which public IP address to set
-jormungandr_node_public_ip_auto_get:    1                                                                # Tries to fetch public IP automatically if set to 1
 jormungandr_node_public_port:           3000
 jormungandr_node_genesis_block_hash:    65a9b15f82619fffd5a7571fdbf973a18480e9acf1d2fddeb606ebb53ecca839 # see https://hydra.iohk.io/job/Cardano/jormungandr/jormungandrConfigs.nightly/latest

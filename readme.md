@@ -63,8 +63,6 @@ jormungandr_node_dir_scripts:           /home/jormungandr/node/scripts
 
 jormungandr_node_version:               v0.8.0-rc9                                                       # see https://github.com/input-output-hk/jormungandr/releases
 jormungandr_node_rest_port:             3100
-jormungandr_node_public_ip:             ~                                                                # Define which public IP address to set
-jormungandr_node_public_ip_auto_get:    1                                                                # Tries to fetch public IP automatically if set to 1
 jormungandr_node_public_port:           3000
 jormungandr_node_genesis_block_hash:    20dbeb9e3ed3063efa7391f55ea23e0638b5cb8ca4f6260e724b6c0c87b1e1ee # see https://hydra.iohk.io/job/Cardano/jormungandr/jormungandrConfigs.nightly/latest
 ```

@@ -56,6 +56,21 @@
   become: yes
   become_user: "{{ jormungandr_node_user }}"
 
+- name: Try to get public ip address if necessary
+  get_url:
+    url: "https://ipecho.net/plain"
+    dest: "{{ jormungandr_node_dir_base }}/public_ip.txt"
+    mode: 0600
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+  register: VAR_PUBLIC_IP
+
+- name: "Read public_ip.txt file"
+  command: cat {{ jormungandr_node_dir_base }}/public_ip.txt
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+  register: VAR_PUBLIC_IP_FILE_STAT
+
 - name: Create node id file
   copy:
     content: "{{ hostvars[inventory_hostname].jormungandr_public_id }}"
@@ -157,8 +172,8 @@
     log: "{{ item.log | default(false) }}"
     comment: "{{ item.comment | default(omit) }}"
   with_items:
-    - { rule: allow, to_port: "{{ jormungandr_node_rest_port }}", protocol: tcp, comment: 'Jormungandr Rest Port' }
-    - { rule: allow, to_port: "{{ jormungandr_node_public_port}}", protocol: tcp, comment: 'Jormungandr Public Listen Port' }
+    - { rule: allow, to_port: "{{ hostvars[inventory_hostname].jormungandr_node_rest_port | default(jormungandr_node_rest_port) }}", protocol: tcp, comment: 'Jormungandr Rest Port' }
+    - { rule: allow, to_port: "{{ hostvars[inventory_hostname].jormungandr_node_public_port | default(jormungandr_node_public_port) }}", protocol: tcp, comment: 'Jormungandr Public Listen Port' }
   notify: ufw-reload
 
 - name: "Read receiver_secret.key file"
