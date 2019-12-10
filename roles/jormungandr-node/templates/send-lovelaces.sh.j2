@@ -85,7 +85,7 @@ echo "FEE_CONSTANT: ${FEE_CONSTANT}"
 echo "FEE_COEFFICIENT: ${FEE_COEFFICIENT}"
 echo "=================================================="
 
-STAGING_FILE="{{ jormungandr_node_dir_tmp }}/staging.$$.transaction"
+STAGING_FILE="{{ jormungandr_node_dir_home }}/node/tmp/staging.$$.transaction"
 
 #CLI transaction
 if [ -f "${STAGING_FILE}" ]; then

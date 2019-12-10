@@ -82,7 +82,7 @@ echo "FEE_COEFFICIENT:  ${FEE_COEFFICIENT}"
 echo "FEE_CERTIFICATE:  ${FEE_CERTIFICATE}"
 echo "=================================================="
 
-STAGING_FILE="{{ jormungandr_node_dir_certificates }}/staging.$$.transaction"
+STAGING_FILE="{{ jormungandr_node_dir_home }}/node/certificates/staging.$$.transaction"
 
 #CLI transaction
 if [ -f "${STAGING_FILE}" ]; then
@@ -95,9 +95,9 @@ ACCOUNT_ADDR=$($CLI address account ${ADDRTYPE} ${ACCOUNT_PK})
 
 echo " ##1. Create the delegation certificate for the Account address"
 
-ACCOUNT_SK_FILE="{{ jormungandr_node_dir_certificates }}/account.prv"
-CERTIFICATE_FILE="{{ jormungandr_node_dir_certificates }}/account_delegation_certificate"
-SIGNED_CERTIFICATE_FILE="{{ jormungandr_node_dir_certificates }}/account_delegation_certificate.signed"
+ACCOUNT_SK_FILE="{{ jormungandr_node_dir_home }}/node/certificates/account.prv"
+CERTIFICATE_FILE="{{ jormungandr_node_dir_home }}/node/certificates/account_delegation_certificate"
+SIGNED_CERTIFICATE_FILE="{{ jormungandr_node_dir_home }}/node/certificates/account_delegation_certificate.signed"
 echo ${ACCOUNT_SK} > ${ACCOUNT_SK_FILE}
 
 $CLI certificate new stake-delegation \
@@ -131,8 +131,8 @@ $CLI transaction finalize --staging ${STAGING_FILE}
 TRANSACTION_ID=$($CLI transaction data-for-witness --staging ${STAGING_FILE})
 
 echo " ##6. Create the withness"
-WITNESS_SECRET_FILE="{{ jormungandr_node_dir_certificates }}/witness.secret.$$"
-WITNESS_OUTPUT_FILE="{{ jormungandr_node_dir_certificates }}/witness.out.$$"
+WITNESS_SECRET_FILE="{{ jormungandr_node_dir_home }}/node/certificates/witness.secret.$$"
+WITNESS_OUTPUT_FILE="{{ jormungandr_node_dir_home }}/node/certificates/witness.out.$$"
 printf "${ACCOUNT_SK}" > ${WITNESS_SECRET_FILE}
 
 $CLI transaction make-witness ${TRANSACTION_ID} \

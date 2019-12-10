@@ -54,16 +54,10 @@ jormungandr_node_user:               jormungandr
 jormungandr_node_group:              jormungandr
 
 jormungandr_node_dir_home:           /home/jormungandr
-jormungandr_node_dir_base:           /home/jormungandr/node
-jormungandr_node_dir_repo:           /home/jormungandr/node/jormungandr-repo
-jormungandr_node_dir_storage:        /home/jormungandr/node/storage
-jormungandr_node_dir_certificates:   /home/jormungandr/node/certificates
-jormungandr_node_dir_logs:           /home/jormungandr/node/logs
-jormungandr_node_dir_scripts:        /home/jormungandr/node/scripts
 
 jormungandr_node_version:            v0.8.0-rc9 # see https://github.com/input-output-hk/jormungandr/releases
-jormungandr_node_rest_port:          3100
-jormungandr_node_public_port:        3000
+jormungandr_node_rest_port:          3100       # Default value for all hosts. Can be overwritten in inventories file on a per host basis.
+jormungandr_node_public_port:        3000       # Default value for all hosts. Can be overwritten in inventories file on a per host basis.
 jormungandr_node_genesis_block_hash: 20dbeb9e3ed3063efa7391f55ea23e0638b5cb8ca4f6260e724b6c0c87b1e1ee # see https://hydra.iohk.io/job/Cardano/jormungandr/jormungandrConfigs.nightly/latest
 ```
 

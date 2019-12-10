@@ -31,7 +31,7 @@ p2p:
 
 rest:
   listen: "127.0.0.1:{{ hostvars[inventory_hostname].jormungandr_node_rest_port | default(jormungandr_node_rest_port) }}"
-storage: "{{ jormungandr_node_dir_storage }}"
+storage: "{{ jormungandr_node_dir_home }}/node/storage"
 mempool:
     fragment_ttl: 2h
     log_ttl: 12h

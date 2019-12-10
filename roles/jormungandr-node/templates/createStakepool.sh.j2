@@ -68,9 +68,9 @@ echo POOL_KES_SK: ${POOL_KES_SK}
 echo POOL_KES_PK: ${POOL_KES_PK}
 
 echo " ##3. Create the Stake Pool certificate using above VRF and KEY public keys"
-ACCOUNT_SK_FILE="{{ jormungandr_node_dir_certificates }}/account.privateKey"
-STAKE_POOL_CERTIFICATE_FILE="{{ jormungandr_node_dir_certificates }}/stake_pool.cert"
-SIGNED_STAKE_POOL_CERTIFICATE_FILE="{{ jormungandr_node_dir_certificates }}/stake_pool_certificate.signed"
+ACCOUNT_SK_FILE="{{ jormungandr_node_dir_home }}/node/certificates/account.privateKey"
+STAKE_POOL_CERTIFICATE_FILE="{{ jormungandr_node_dir_home }}/node/certificates/stake_pool.cert"
+SIGNED_STAKE_POOL_CERTIFICATE_FILE="{{ jormungandr_node_dir_home }}/node/certificates/stake_pool_certificate.signed"
 echo ${ACCOUNT_SK} > ${ACCOUNT_SK_FILE}
 
 $CLI certificate new stake-pool-registration --tax-fixed ${TAX_VALUE} --tax-ratio ${TAX_RATIO} --tax-limit ${TAX_LIMIT} --kes-key ${POOL_KES_PK} --vrf-key ${POOL_VRF_PK} --owner ${ACCOUNT_PK} --start-validity 0 --management-threshold 1 >${STAKE_POOL_CERTIFICATE_FILE}
@@ -84,12 +84,12 @@ $CLI certificate sign \
 echo "SIGNED_STAKE_POOL_CERTIFICATE: $(cat ${SIGNED_STAKE_POOL_CERTIFICATE_FILE})"
 
 echo " ##4. Send the signed Stake Pool certificate to the blockchain"
-{{ jormungandr_node_dir_scripts }}/send-certificate.sh {{ jormungandr_node_dir_certificates }}/stake_pool.cert ${REST_PORT} ${ACCOUNT_SK}
+{{ jormungandr_node_dir_home }}/node/scripts/send-certificate.sh {{ jormungandr_node_dir_home }}/node/certificates/stake_pool.cert ${REST_PORT} ${ACCOUNT_SK}
 
 echo " ##5. Retrieve your stake pool id (NodeId)"
-cat {{ jormungandr_node_dir_certificates }}/stake_pool.cert | $CLI certificate get-stake-pool-id | tee {{ jormungandr_node_dir_certificates }}/stake.id
+cat {{ jormungandr_node_dir_home }}/node/certificates/stake_pool.cert | $CLI certificate get-stake-pool-id | tee {{ jormungandr_node_dir_home }}/node/certificates/stake.id
 
-NODE_ID=$(cat {{ jormungandr_node_dir_certificates }}/stake.id)
+NODE_ID=$(cat {{ jormungandr_node_dir_home }}/node/certificates/stake.id)
 
 echo "============== Stake Pool details ================"
 echo "Stake Pool ID:    ${NODE_ID}"
@@ -101,9 +101,9 @@ echo "=================================================="
 
 rm ${STAKE_POOL_CERTIFICATE_FILE} ${ACCOUNT_SK_FILE} ${SIGNED_STAKE_POOL_CERTIFICATE_FILE}
 
-echo " ##6. Create the {{ jormungandr_node_dir_base }}/node-secret.yaml file"
+echo " ##6. Create the {{ jormungandr_node_dir_home }}/node/config/node-secret.yaml file"
 #define the template.
-cat > {{ jormungandr_node_dir_base }}/node-secret.yaml << EOF
+cat > {{ jormungandr_node_dir_home }}/node/config/node-secret.yaml << EOF
 genesis:
   sig_key: ${POOL_KES_SK}
   vrf_key: ${POOL_VRF_SK}

@@ -11,12 +11,12 @@
     - screen
     - screenie
 
-- name: "Ensure '{{ jormungandr_node_group }}' group exists"
+- name: "Create '{{ jormungandr_node_group }}' group"
   group:
     name: "{{ jormungandr_node_group }}"
     state: present
 
-- name: "Create {{ jormungandr_node_user }} user"
+- name: "Create '{{ jormungandr_node_user }}' user"
   user:
     name:   "{{ jormungandr_node_user }}"
     group:  "{{ jormungandr_node_group }}"
@@ -36,11 +36,13 @@
     mode: 0700
   with_items:
     - "{{ jormungandr_node_dir_home }}/.bash_completion.d"
-    - "{{ jormungandr_node_dir_storage }}"
-    - "{{ jormungandr_node_dir_certificates }}"
-    - "{{ jormungandr_node_dir_logs }}"
-    - "{{ jormungandr_node_dir_scripts }}"
-    - "{{ jormungandr_node_dir_tmp }}"
+    - "{{ jormungandr_node_dir_home }}/node/storage"
+    - "{{ jormungandr_node_dir_home }}/node/certificates"
+    - "{{ jormungandr_node_dir_home }}/node/logs"
+    - "{{ jormungandr_node_dir_home }}/node/scripts"
+    - "{{ jormungandr_node_dir_home }}/node/tmp"
+    - "{{ jormungandr_node_dir_home }}/node/downloads"
+    - "{{ jormungandr_node_dir_home }}/node/config"
   become: yes
   become_user: "{{ jormungandr_node_user }}"
 
@@ -52,47 +54,57 @@
     group: "{{ jormungandr_node_group }}"
     mode: 0600
   with_items:
-    - "{{ jormungandr_node_dir_logs }}/node.out"
+    - "{{ jormungandr_node_dir_home }}/node/logs/node.out"
   become: yes
   become_user: "{{ jormungandr_node_user }}"
 
-- name: Try to get public ip address if necessary
+- name: Try to get public ip address
   get_url:
     url: "https://ipecho.net/plain"
-    dest: "{{ jormungandr_node_dir_base }}/public_ip.txt"
+    dest: "{{ jormungandr_node_dir_home }}/node/config/public_ip.txt"
     mode: 0600
   become: yes
   become_user: "{{ jormungandr_node_user }}"
   register: VAR_PUBLIC_IP
 
 - name: "Read public_ip.txt file"
-  command: cat {{ jormungandr_node_dir_base }}/public_ip.txt
+  command: "cat {{ jormungandr_node_dir_home }}/node/config/public_ip.txt"
   become: yes
   become_user: "{{ jormungandr_node_user }}"
   register: VAR_PUBLIC_IP_FILE_STAT
 
-- name: Create node id file
+- name: "Create 'node_id.txt' file"
   copy:
     content: "{{ hostvars[inventory_hostname].jormungandr_public_id }}"
-    dest: "{{ jormungandr_node_dir_base }}/node_id.txt"
+    dest: "{{ jormungandr_node_dir_home }}/node/config/node_id.txt"
     mode: 0600
   register: VAR_NODE_ID_FILE
   become: yes
   become_user: "{{ jormungandr_node_user }}"
 
-- name: Create genesis block hash file
+- name: "Create 'genesis_block_hash.tx' file"
   copy:
     content: "{{ jormungandr_node_genesis_block_hash }}"
-    dest: "{{ jormungandr_node_dir_base }}/genesis_block_hash.txt"
+    dest: "{{ jormungandr_node_dir_home }}/node/config/genesis_block_hash.txt"
     mode: 0600
   register: VAR_GENESIS_BLOCK_HASH_FILE
   become: yes
   become_user: "{{ jormungandr_node_user }}"
 
-- name: Download rustup
-  shell: "curl https://sh.rustup.rs -sSf | sh -s -- -y"
+- name: Download latest rustup script
+  get_url:
+    url: "https://sh.rustup.rs"
+    dest: "{{ jormungandr_node_dir_home }}/node/downloads/rustup-init.sh"
+    mode: 0700
   become: yes
   become_user: "{{ jormungandr_node_user }}"
+  register: VAR_DOWNLOAD_RUSTUP
+
+- name: Install rustup
+  shell: "bash {{ jormungandr_node_dir_home }}/node/downloads/rustup-init.sh -y"
+  become: yes
+  become_user: "{{ jormungandr_node_user }}"
+  when: VAR_DOWNLOAD_RUSTUP.changed
 
 - name: Add rustup path
   action: lineinfile dest="{{ jormungandr_node_dir_home }}/.bashrc" line="PATH=$PATH:{{ jormungandr_node_dir_home }}/.cargo/bin" state=present
@@ -116,21 +128,21 @@
     clone: yes
     update: yes
     version: "{{ jormungandr_node_version }}"
-    dest: "{{ jormungandr_node_dir_repo }}"
+    dest: "{{ jormungandr_node_dir_home }}/node/repository"
   become: yes
   become_user: "{{ jormungandr_node_user }}"
   register: VAR_TASK_GIT_CLONE
 
-- name: "Delete contents of {{ jormungandr_node_dir_storage }} if necessary"
+- name: "Delete contents of {{ jormungandr_node_dir_home }}/node/storage if necessary"
   file:
     state: absent
-    path: "{{ jormungandr_node_dir_storage }}/"
+    path: "{{ jormungandr_node_dir_home }}/node/storage/"
   when: VAR_GENESIS_BLOCK_HASH_FILE.changed
 
 - name: Compile jormungandr (may take a while)
   shell: "{{ jormungandr_node_dir_home }}/.cargo/bin/cargo install --path jormungandr --force"
   args:
-    chdir: "{{ jormungandr_node_dir_repo }}"
+    chdir: "{{ jormungandr_node_dir_home }}/node/repository"
   become: yes
   become_user: "{{ jormungandr_node_user }}"
   when: VAR_TASK_GIT_CLONE.changed
@@ -138,7 +150,7 @@
 - name: Compile jormungandr JCLI (may take a while)
   shell: "{{ jormungandr_node_dir_home }}/.cargo/bin/cargo install --path jcli --force"
   args:
-    chdir: "{{ jormungandr_node_dir_repo }}"
+    chdir: "{{ jormungandr_node_dir_home }}/node/repository"
   become: yes
   become_user: "{{ jormungandr_node_user }}"
   when: VAR_TASK_GIT_CLONE.changed
@@ -156,7 +168,7 @@
 - name: Install configuration
   template:
     src: node-config.yaml.j2
-    dest: "{{ jormungandr_node_dir_base }}/node-config.yaml"
+    dest: "{{ jormungandr_node_dir_home }}/node/config/node-config.yaml"
   become: yes
   become_user: "{{ jormungandr_node_user }}"
 
@@ -178,23 +190,23 @@
 
 - name: "Read receiver_secret.key file"
   stat:
-    path: "{{ jormungandr_node_dir_base }}/receiver_secret.key"
+    path: "{{ jormungandr_node_dir_home }}/node/config/receiver_secret.key"
   register: VAR_RECEIVER_SECRET_FILE_STAT
 
 - name: Generate receiver secret
-  shell:  "{{ jormungandr_node_dir_home }}/.cargo/bin/jcli key generate --type=Ed25519Extended > {{ jormungandr_node_dir_base }}/receiver_secret.key"
+  shell:  "{{ jormungandr_node_dir_home }}/.cargo/bin/jcli key generate --type=Ed25519Extended > {{ jormungandr_node_dir_home }}/node/config/receiver_secret.key"
   become: yes
   become_user: "{{ jormungandr_node_user }}"
   when: VAR_RECEIVER_SECRET_FILE_STAT.stat.exists == false
 
 - name: Generate receiver public key
-  shell: "cat {{ jormungandr_node_dir_base }}/receiver_secret.key | {{ jormungandr_node_dir_home }}/.cargo/bin/jcli key to-public > {{ jormungandr_node_dir_base }}/receiver_public.key"
+  shell: "cat {{ jormungandr_node_dir_home }}/node/config/receiver_secret.key | {{ jormungandr_node_dir_home }}/.cargo/bin/jcli key to-public > {{ jormungandr_node_dir_home }}/node/config/receiver_public.key"
   become: yes
   become_user: "{{ jormungandr_node_user }}"
   when: VAR_RECEIVER_SECRET_FILE_STAT.stat.exists == false
 
 - name: Generate receiver account
-  shell: "{{ jormungandr_node_dir_home }}/.cargo/bin/jcli address account --testing $(cat {{ jormungandr_node_dir_base }}/receiver_public.key) | tee {{ jormungandr_node_dir_base }}/receiver_account.txt"
+  shell: "{{ jormungandr_node_dir_home }}/.cargo/bin/jcli address account --testing $(cat {{ jormungandr_node_dir_home }}/node/config/receiver_public.key) | tee {{ jormungandr_node_dir_home }}/node/config/receiver_account.txt"
   become: yes
   become_user: "{{ jormungandr_node_user }}"
   when: VAR_RECEIVER_SECRET_FILE_STAT.stat.exists == false
@@ -202,20 +214,20 @@
 - name: Install bash commands script
   template:
     src: bash_commands.sh.j2
-    dest: "{{ jormungandr_node_dir_scripts }}/bash-commands.sh"
+    dest: "{{ jormungandr_node_dir_home }}/node/scripts/bash-commands.sh"
     mode: 0700
   become: yes
   become_user: "{{ jormungandr_node_user }}"
 
 - name: Install autoload of bash commands
-  action: lineinfile dest="{{ jormungandr_node_dir_home }}/.bashrc" line="source {{ jormungandr_node_dir_scripts }}/bash-commands.sh" state=present
+  action: lineinfile dest="{{ jormungandr_node_dir_home }}/.bashrc" line="source {{ jormungandr_node_dir_home }}/node/scripts/bash-commands.sh" state=present
   become: yes
   become_user: "{{ jormungandr_node_user }}"
 
 - name: Install "createStakepool.sh" script
   template:
     src: createStakepool.sh.j2
-    dest: "{{ jormungandr_node_dir_scripts }}/createStakepool.sh"
+    dest: "{{ jormungandr_node_dir_home }}/node/scripts/createStakepool.sh"
     mode: 0700
   become: yes
   become_user: "{{ jormungandr_node_user }}"
@@ -223,7 +235,7 @@
 - name: Install "send-certificate.sh" script
   template:
     src: send-certificate.sh.j2
-    dest: "{{ jormungandr_node_dir_scripts }}/send-certificate.sh"
+    dest: "{{ jormungandr_node_dir_home }}/node/scripts/send-certificate.sh"
     mode: 0700
   become: yes
   become_user: "{{ jormungandr_node_user }}"
@@ -231,7 +243,7 @@
 - name: Install "delegate-account.sh" script
   template:
     src: delegate-account.sh.j2
-    dest: "{{ jormungandr_node_dir_scripts }}/delegate-account.sh"
+    dest: "{{ jormungandr_node_dir_home }}/node/scripts/delegate-account.sh"
     mode: 0700
   become: yes
   become_user: "{{ jormungandr_node_user }}"
@@ -239,7 +251,7 @@
 - name: Install "send-lovelaces.sh" script
   template:
     src: send-lovelaces.sh.j2
-    dest: "{{ jormungandr_node_dir_scripts }}/send-lovelaces.sh"
+    dest: "{{ jormungandr_node_dir_home }}/node/scripts/send-lovelaces.sh"
     mode: 0700
   become: yes
   become_user: "{{ jormungandr_node_user }}"
@@ -250,13 +262,13 @@
     state: file
     mode: 0600
   with_items:
-    - "{{ jormungandr_node_dir_base }}/receiver_secret.key"
-    - "{{ jormungandr_node_dir_base }}/receiver_public.key"
-    - "{{ jormungandr_node_dir_base }}/receiver_account.txt"
+    - "{{ jormungandr_node_dir_home }}/node/config/receiver_secret.key"
+    - "{{ jormungandr_node_dir_home }}/node/config/receiver_public.key"
+    - "{{ jormungandr_node_dir_home }}/node/config/receiver_account.txt"
   become: yes
   become_user: "{{ jormungandr_node_user }}"
 
 - name: Start Node
-  shell: "/usr/bin/flock -n {{ jormungandr_node_dir_base }}/node.lockfile nohup {{ jormungandr_node_dir_home }}/.cargo/bin/jormungandr --config {{ jormungandr_node_dir_base }}/node-config.yaml --genesis-block-hash {{ jormungandr_node_genesis_block_hash }} >> {{ jormungandr_node_dir_logs }}/node.out 2>&1 &"
+  shell: "/usr/bin/flock -n {{ jormungandr_node_dir_home }}/node/tmp/node.lockfile nohup {{ jormungandr_node_dir_home }}/.cargo/bin/jormungandr --config {{ jormungandr_node_dir_home }}/node/config/node-config.yaml --genesis-block-hash {{ jormungandr_node_genesis_block_hash }} >> {{ jormungandr_node_dir_home }}/node/logs/node.out 2>&1 &"
   become: yes
   become_user: "{{ jormungandr_node_user }}"
