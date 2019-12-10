@@ -165,28 +165,30 @@
   become: yes
   become_user: "{{ jormungandr_node_user }}"
 
-- name: Install configuration
+- name: "Install 'node-config.yaml' configuration file"
   template:
     src: node-config.yaml.j2
     dest: "{{ jormungandr_node_dir_home }}/node/config/node-config.yaml"
+    mode: 0600
   become: yes
   become_user: "{{ jormungandr_node_user }}"
 
-- name: Opening ports
+- name: Open Rest Port
   ufw:
-    rule: "{{ item.rule }}"
-    from_ip: "{{ item.from_ip | default('any') }}"
-    to_ip: "{{ item.to_ip | default('any') }}"
-    from_port: "{{ item.from_port | default('') }}"
-    to_port: "{{ item.to_port | default('') }}"
-    protocol: "{{ item.protocol | default('any') }}"
-    route: "{{ item.route | default(omit) }}"
-    log: "{{ item.log | default(false) }}"
-    comment: "{{ item.comment | default(omit) }}"
-  with_items:
-    - { rule: allow, to_port: "{{ hostvars[inventory_hostname].jormungandr_node_rest_port | default(jormungandr_node_rest_port) }}", protocol: tcp, comment: 'Jormungandr Rest Port' }
-    - { rule: allow, to_port: "{{ hostvars[inventory_hostname].jormungandr_node_public_port | default(jormungandr_node_public_port) }}", protocol: tcp, comment: 'Jormungandr Public Listen Port' }
+    rule: "allow"
+    to_port: "{{ hostvars[inventory_hostname].jormungandr_node_rest_port | default(jormungandr_node_rest_port) }}"
+    protocol: "tcp"
+    comment: "Jormungandr Rest Port"
   notify: ufw-reload
+  
+- name: Open Public Port
+  ufw:
+    rule: "allow"
+    to_port: "{{ hostvars[inventory_hostname].jormungandr_node_public_port | default(jormungandr_node_public_port) }}"
+    protocol: "tcp"
+    comment: "Jormungandr Public Port"
+  notify: ufw-reload
+  when: (hostvars[inventory_hostname].jormungandr_node_allow_incoming | default(jormungandr_node_allow_incoming)) and VAR_PUBLIC_IP_FILE_STAT['stdout_lines'][0] is defined and VAR_PUBLIC_IP_FILE_STAT['stdout_lines'][0]
 
 - name: "Read receiver_secret.key file"
   stat:
