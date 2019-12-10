@@ -23,7 +23,7 @@ p2p:
     id: fdb88d08c7c759b5d30e854492cb96f8203c2d875f6f3e00
   - address: "/ip4/52.52.67.33/tcp/3000"
     id: 3d1f8891bf53eb2946a18fb46cf99309649f0163b4f71b34
-{% if VAR_PUBLIC_IP_FILE_STAT['stdout_lines'][0] is defined and VAR_PUBLIC_IP_FILE_STAT['stdout_lines'][0] %}
+{% if (hostvars[inventory_hostname].jormungandr_node_allow_incoming | default(jormungandr_node_allow_incoming)) and VAR_PUBLIC_IP_FILE_STAT['stdout_lines'][0] is defined and VAR_PUBLIC_IP_FILE_STAT['stdout_lines'][0] %}
   listen_address: "/ip4/{{ VAR_PUBLIC_IP_FILE_STAT['stdout_lines'][0] }}/tcp/{{ hostvars[inventory_hostname].jormungandr_node_public_port | default(jormungandr_node_public_port) }}"
   public_address: "/ip4/{{ VAR_PUBLIC_IP_FILE_STAT['stdout_lines'][0] }}/tcp/{{ hostvars[inventory_hostname].jormungandr_node_public_port | default(jormungandr_node_public_port) }}"
 {% endif %}

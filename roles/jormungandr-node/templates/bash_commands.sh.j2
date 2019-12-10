@@ -80,3 +80,7 @@ function leader_logs() {
     echo "Has this node been scheduled to be leader?"
     echo "$({{ jormungandr_node_dir_home }}/.cargo/bin/jcli rest v0 leaders logs get -h http://127.0.0.1:{{ hostvars[inventory_hostname].jormungandr_node_rest_port | default(jormungandr_node_rest_port) }}/api)"
 }
+
+function logs() {
+  tail -f {{ jormungandr_node_dir_home }}/node/logs/node.out
+}
