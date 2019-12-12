@@ -5,7 +5,7 @@ jormungandr_node_group:                 jormungandr
 
 jormungandr_node_dir_home:              /home/jormungandr
 
-jormungandr_node_version:               v0.8.0-rc10                                                      # see https://github.com/input-output-hk/jormungandr/releases
+jormungandr_node_version:               v0.8.0                                                           # see https://github.com/input-output-hk/jormungandr/releases
 jormungandr_node_rest_port:             3100
 jormungandr_node_public_port:           3000
 jormungandr_node_allow_incoming:        0 # Values: 0,1 - Enables or disabled incoming connections
